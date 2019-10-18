@@ -1,0 +1,42 @@
+import numpy as np
+from flask import Flask, request, jsonify
+import pickle
+import pandas as pd
+import tensorflow as tf
+import keras
+from tensorflow.python.keras.backend import set_session
+from tensorflow.python.keras.models import load_model
+
+app = Flask(__name__)# Load the model
+model = pickle.load(open('/Users/pro2017/Documents/Predictions/TensorFlow/model.pkl','rb'))
+graph = tf.get_default_graph()
+session = keras.backend.get_session()
+init = tf.global_variables_initializer()
+
+
+@app.route('/api',methods=['POST'])
+def predict():
+    # Get the data from the POST request.
+    global graph
+    global session
+    session.run(init)
+    with graph.as_default():
+        data = request.get_json(force=True)    # Make prediction using model loaded from disk as per the data.
+        data = pd.DataFrame(data['exp'])
+        data = data.T
+        print(data)
+
+        try:
+            set_session(session)
+            prediction = model.predict(data)    # Take the first value of prediction
+            print(prediction[0])
+            output = np.array(prediction[0]).tolist()
+            print(output)
+
+            return jsonify({'prediction': output} )
+        except Exception as e:
+            print(e)
+
+
+if __name__ == '__main__':
+    app.run(port=5000, debug=True)
